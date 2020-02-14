@@ -84,9 +84,6 @@ def from_object(obj,getitem_fcn=None):
     """
     gen = GeneratorBase(obj,getitem_fcn)
     # infer output types
-    print('---------------------->>>>')
-    print('type(gen.getitem(0)) = ',type(gen.getitem(0)), 'double type: ', type(type(gen.getitem(0))))
-    print('---------------------->>>>')
     value = gen.getitem(0)
     # Infers the data types and shapes:
     if isinstance(value,(tuple,list)):
@@ -108,7 +105,7 @@ def from_object(obj,getitem_fcn=None):
 
     elif isinstance(value,dict):
         # checks if iterable and dictionary
-        print('not implement now dictionary')
+        raise NotImplemented
         output_types = (tf.int32)
         output_shapes = (tf.TensorShape([]))
     else:
