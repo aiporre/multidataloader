@@ -6,23 +6,107 @@ except:
     from .utils import get_tf_dtype, get_tf_shape, is_iterable
 import numpy as np
 
-class GeneratorBase(Generator):
-    '''
-    Wraps an object with a method getitem to make it an iterable class
-        :param obj: instance of object that access data
-        :type arg: str
-        :param getitem_fcn: The variable arguments are used for ...
-        :type arg: str
-        :param `**kwargs`: The keyword arguments are used for ...
-        :ivar arg: This is where we store arg
-        :vartype arg: str
 
-    '''
-    def __init__(self,obj,getitem_fcn=None,lenght=None):
-        """ inits Spamfilter with training data
-            :param training_dir: path of training directory with subdirectories
-             '/ham' and '/spam'
-        """
+class AugmentedDataset():
+    """ Augments :class:`tf.data.Dataset` to handle custom configurations
+
+    :param dataset: Instance of a :class:`tf.data.Dataset`
+    :type dataset: :class:`tf.data.Dataset`
+    :param length: length of the dataset, defaults to None
+    :type length: int, optional
+    :param length: defines training/validation flag. If `True` then the augmented dataset handles training configurations, and if `False` the augmented dataset handles validation configurations, defaults to `True`
+    :type training: bool, optional
+    """
+    def __init__(self,dataset,length=None,training=True):
+        self.dataset = dataset
+        self.batch_size = 1
+        self.length = length
+        self.training = training
+
+    def _build_argments_fit(self):
+        ''' Creates the arguments used in fit
+        '''
+        if self.training:
+            arguments = {'batch_size':None,
+                    'steps_per_epoch':self.length//self.batch_size}
+        else:
+            arguments = {'batch_size':None,
+                    'validation_steps':self.length//self.batch_size}
+        self.dataset.built_args = arguments
+    def batch(self,batch_size):
+        '''Make dataset batchs of specific batch size
+
+        :param batch_size: size of the batches
+        :type batch_size: int
+        '''
+        self.batch_size = batch_size
+        self.dataset = self.dataset.batch(batch_size)
+        return self
+    def cache(self,filename=''):
+        '''Defines the cache file to store previously loaded samples
+
+        :param filename: File name of the file where the loaded samples are stored. The second access will be loaded from the cache, defaults to ''
+        :type filename: str, optional
+        '''
+        self.dataset = self.dataset.cache(filename=filename)
+        return self
+    def enumerate(self,start=0):
+        ''' As the build-in enumerate function creates an index next to the sample.
+
+        :param start: start count of the enumeration, defaults to 0
+        :type start: int, optional
+        '''
+        self.dataset = self.dataset.enumerate(start=start)
+        return self
+    def filter(self,filter_fcn):
+        ''' Applies a filter function to all the samples of dataset. Applies lazily.
+
+        :param filter_fcn: funcion reference
+        '''
+        self.dataset = self.dataset.filter(filter_fn)
+        return self
+    def map(self,map_func,num_parallel_calls=None):
+        '''Maps every sample in the dataset by a map function.
+
+        :param map_func: function reference
+        '''
+        self.dataset = self.dataset.map(
+                                    map_func,
+                                    num_parallel_calls=None)
+        return self
+    def prefetch(self,buffer_size):
+        '''Preloads samples on the tensor flow session i.e. memory to be processed.abs($0)
+
+        :param buffer_size: size of the preloaded samples. If batch is specified then it loads a buffer_size of batches. For example, buffer_size=2 with batches of 100 will load 200 samples to the memory.
+        :type buffer_size: int
+        '''
+        self.dataset = self.dataset.prefetch(buffer_size)
+        return self
+    def repeat(self,count=None):
+        '''Creates a concatenated repeated dataset_builder
+
+        :param count: Number of repreatitions
+        :type count: int
+        '''
+        self.dataset = self.dataset.repeat(count=count)
+        return self
+    def build(self):
+        '''Creates an augmented dataset that contains the arguments to be used in the method :class:`tf.keras.model.fit()`
+        '''
+        self._build_argments_fit()
+        return self.dataset
+
+class GeneratorBase(Generator):
+    """Wraps an object with a method getitem to make it an iterable class
+
+    :param obj: Instance of object that access data
+    :type obj: :class:`object`
+    :param getitem_fcn: Name of the method in the object to access data
+    :type getitem_fcn: str
+    :param length: length of the dataset, if None then infers from len() function, defaults to None
+    :type length: int
+    """
+    def __init__(self,obj,getitem_fcn=None,length=None):
         self.obj = obj
         if getitem_fcn is None:
             if hasattr(obj,'__getitem__'):
@@ -37,30 +121,23 @@ class GeneratorBase(Generator):
 
 
         if hasattr(obj,'__len__'):
-            self.lenght = len(obj)
+            self.length = len(obj)
         elif length is not None:
-            self.length = lenght
+            self.length = length
         else:
-            raise ValueException("Lenght value is None, and object has not attribute to infer")
-        print('current lenght is: ', self.lenght)
+            raise ValueException("length value is None, and object has not attribute to infer")
+        print('current length is: ', self.length)
         self.cnt = 0
+    def __len__(self):
+        return self.length
     def __call__(self):
         return self
     def __next__(self):
-        """ Generates token frequency table from training emails
-            :return:  dict{k,v}:  spam/ham frequencies
-            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
-        """
-        if self.cnt>=self.lenght:
+        if self.cnt>=self.length:
             raise StopIteration
         else:
             return self.send(None)
     def send(self, ignored_arg):
-        """ Generates token frequency table from training emails
-            :param: ignored_arg must be None
-            :return:  dict{k,v}:  spam/ham frequencies
-            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
-        """
         current_value = self.getitem(self.cnt)
         self.cnt +=1
         # tf.data.Dataset fails to parse list, therefore the values is transformed into a tuple
@@ -69,18 +146,19 @@ class GeneratorBase(Generator):
         return current_value
 
     def throw(self, type=None, value=None, traceback=None):
-        """ Generates token frequency table from training emails
-            :return:  dict{k,v}:  spam/ham frequencies
-            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
+        """ Raise a :class:`StopIteration`
         """
         raise StopIteration
 
 
-def from_object(obj,getitem_fcn=None):
+def from_object(obj,getitem_fcn=None,training=True):
     """ Creates a tf.data.Dataset object with configuration parameters for fitting
-        :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
-        :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
-        :return: An object :class:`tf.data.Dataset` from the obj dataset
+
+    :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
+    :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
+    :param training: Specify training/validation flag
+    :type training: book, optional
+    :return: An object :class:`tf.data.Dataset` from the obj dataset
     """
     gen = GeneratorBase(obj,getitem_fcn)
     # infer output types
@@ -111,15 +189,7 @@ def from_object(obj,getitem_fcn=None):
     else:
         raise Exception(f'The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
 
-    a = gen()
-    print('----a callable function', a, type(a))
-    print('------>>>>>>> output_types itentified...:', output_types)
-    return tf.data.Dataset.from_generator(gen, output_types, output_shapes)
-
-
-
-if __name__ == '__main__':
-    # c = Counter()
-    # dataset = from_object(c,'read')
-    # print(list(dataset))
-    print('MAIN: ')
+    # obtaining tf.keral.model.fit arguments
+    dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
+    aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
+    return aug_dataset
