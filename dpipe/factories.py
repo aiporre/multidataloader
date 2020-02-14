@@ -1,25 +1,27 @@
 from collections.abc import Generator
 import tensorflow as tf
-from utils import get_tf_dtype, get_tf_shape, is_iterable
+try:
+    from utils import get_tf_dtype, get_tf_shape, is_iterable
+except:
+    from .utils import get_tf_dtype, get_tf_shape, is_iterable
 import numpy as np
 
 class GeneratorBase(Generator):
     '''
     Wraps an object with a method getitem to make it an iterable class
-    :param obj: instance of object that access data
-    :type arg: str
-    :param getitem_fcn: The variable arguments are used for ...
-    :type arg: str
-    :param `**kwargs`: The keyword arguments are used for ...
-    :ivar arg: This is where we store arg
-    :vartype arg: str
+        :param obj: instance of object that access data
+        :type arg: str
+        :param getitem_fcn: The variable arguments are used for ...
+        :type arg: str
+        :param `**kwargs`: The keyword arguments are used for ...
+        :ivar arg: This is where we store arg
+        :vartype arg: str
 
     '''
     def __init__(self,obj,getitem_fcn=None,lenght=None):
         """ inits Spamfilter with training data
-
-        :param training_dir: path of training directory with subdirectories
-         '/ham' and '/spam'
+            :param training_dir: path of training directory with subdirectories
+             '/ham' and '/spam'
         """
         self.obj = obj
         if getitem_fcn is None:
@@ -46,8 +48,8 @@ class GeneratorBase(Generator):
         return self
     def __next__(self):
         """ Generates token frequency table from training emails
-        :return:  dict{k,v}:  spam/ham frequencies
-        k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
+            :return:  dict{k,v}:  spam/ham frequencies
+            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
         """
         if self.cnt>=self.lenght:
             raise StopIteration
@@ -55,27 +57,30 @@ class GeneratorBase(Generator):
             return self.send(None)
     def send(self, ignored_arg):
         """ Generates token frequency table from training emails
-        :param: ignored_arg must be None
-        :return:  dict{k,v}:  spam/ham frequencies
-        k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
+            :param: ignored_arg must be None
+            :return:  dict{k,v}:  spam/ham frequencies
+            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
         """
         current_value = self.getitem(self.cnt)
         self.cnt +=1
+        # tf.data.Dataset fails to parse list, therefore the values is transformed into a tuple
+        if isinstance(current_value,list):
+            current_value = tuple(current_value)
         return current_value
 
     def throw(self, type=None, value=None, traceback=None):
         """ Generates token frequency table from training emails
-        :return:  dict{k,v}:  spam/ham frequencies
-        k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
+            :return:  dict{k,v}:  spam/ham frequencies
+            k = (str)token, v = {spam_freq: , ham_freq:, prob_spam:, prob_ham:}
         """
         raise StopIteration
 
 
 def from_object(obj,getitem_fcn=None):
     """ Creates a tf.data.Dataset object with configuration parameters for fitting
-    :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
-    :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
-    :return: An object :class:`tf.data.Dataset` from the obj dataset
+        :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
+        :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
+        :return: An object :class:`tf.data.Dataset` from the obj dataset
     """
     gen = GeneratorBase(obj,getitem_fcn)
     # infer output types
@@ -92,13 +97,22 @@ def from_object(obj,getitem_fcn=None):
         # checks if single value
         output_types = (get_tf_dtype(value))
         output_shapes = (tf.TensorShape(list(value.shape)))
+    elif isinstance(value,str):
+        # checks if string
+        output_types = (tf.string)
+        output_shapes = (tf.TensorShape([]))
+    elif isinstance(value,(int,float)):
+        # checks if single value
+        output_types = (get_tf_dtype(value))
+        output_shapes = (tf.TensorShape([]))
+
     elif isinstance(value,dict):
         # checks if iterable and dictionary
         print('not implement now dictionary')
         output_types = (tf.int32)
         output_shapes = (tf.TensorShape([]))
     else:
-        raise ValueException(f'The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
+        raise Exception(f'The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
 
     a = gen()
     print('----a callable function', a, type(a))

@@ -3,6 +3,7 @@ import tensorflow as tf
 
 def is_iterable(value):
     """ Verifies the value is an is_iterable
+
         :param: value value to identify
     """
     try:
@@ -11,8 +12,8 @@ def is_iterable(value):
     except TypeError as te:
         return False
 def get_tf_shape(value):
-    """ obtains the shape of an variable
-    :param value: input value can be :class:`numpy.ndarray`, numeric or string class. It supports list of numerics or string but not nested lists.
+    """ Obtains the shape of an variable
+        :param`value` input value can be :class:`numpy.ndarray`, numeric or string class. It supports list of numerics or string but not nested lists.
     """
     if isinstance(value,(list,tuple)): # to support list of list or list of tuples
         return [len(list)]
