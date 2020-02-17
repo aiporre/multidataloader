@@ -1,8 +1,13 @@
 import unittest
-from factories import *
+from dpipe import *
 import numpy as np
 from random import choice
 from string import ascii_letters, digits
+import tensorflow as tf
+
+from dpipe import from_object
+
+
 class Counter(object):
     """ Dummy counter class
     """
@@ -154,19 +159,33 @@ class TestFactoriesMethods(unittest.TestCase):
             print('element of the dataset: ', element)
             # print('methods: ', get_all_methods(element))
         self.assertEqual(0, 0)
-    #
-    # def test_isupper(self):
-    #     self.assertTrue('FOO'.isupper())
-    #     self.assertFalse('Foo'.isupper())
-    #
-    # def test_split(self):
-    #     s = 'hello world'
-    #     self.assertEqual(s.split(), ['hello', 'world'])
-    #     # check that s.split fails when the separator is not a string
-    #     with self.assertRaises(TypeError):
-    #         s.split(2)
+
+
+class ImageFlatWithLabel(object):
+    """ Dummy counter class
+    """
+    def __init__(self,length=10):
+        # image 10x10 and a label
+        self.values = length*[(np.random.rand(100),np.random.randint(9))]
+        self.length = length
+    def __len__(self):
+        return self.length
+    def read(self,index):
+        print('index at counter', index)
+        return self.values[index]
+
+def make_model():
+    inputs = tf.keras.Input(shape=(100,))
+    dense = tf.keras.layers.Dense(64, activation='relu')
+    x = dense(inputs)
+    x = tf.keras.layers.Dense(64, activation='relu')(x)
+    outputs = tf.keras.layers.Dense(10)(x)
+    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    return model
+
+
 class TestFactoryDatasetBuilder(unittest.TestCase):
-    def test_training(self):
+    def test_build(self):
         c = DoubleImage(length=100)
         dataset_builder = from_object(c,'read')
         dataset = dataset_builder.batch(20).cache().build()
@@ -176,5 +195,37 @@ class TestFactoryDatasetBuilder(unittest.TestCase):
         #     print('element of the dataset: ', element)
             # print('methods: ', get_all_methods(element))
         self.assertEqual(0, 0)
+    def test_build(self):
+        LENGTH = 50
+        c = ImageFlatWithLabel(length=LENGTH)
+        dataset_builder = from_object(c,'read')
+        dataset = dataset_builder.build()
+        self.assertEqual(len(list(dataset.as_numpy_iterator())) ,LENGTH)
+    def test_batching(self):
+        BATCH = 10
+        LENGTH = 50
+        c = ImageFlatWithLabel(length=LENGTH)
+        dataset_builder = from_object(c, 'read')
+        dataset = dataset_builder.batch(BATCH).build()
+        self.assertEqual(len(list(dataset.as_numpy_iterator())), LENGTH//BATCH)
+    def test_shuffle(self):
+        c = Counter()
+        dataset_builder = from_object(c,'read')
+        dataset = dataset_builder.shuffle(len(c), reshuffle_each_iteration=True).build()
+        list1 = list(dataset.as_numpy_iterator())
+        list2 = list(dataset.as_numpy_iterator())
+        self.assertFalse(list1==list2)
+    def test_training(self):
+        EPOCHS = 10
+        LENGTH = 50
+        c = ImageFlatWithLabel(length=LENGTH)
+        dataset_builder = from_object(c,'read')
+        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().build()
+        model = make_model()
+        model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              optimizer=tf.keras.optimizers.RMSprop())
+        print("Build arguments: ", dataset.built_args)
+        model.fit(x=dataset, epochs=EPOCHS,**dataset.built_args)
+
 if __name__ == '__main__':
     unittest.main()

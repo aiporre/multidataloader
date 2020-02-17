@@ -63,7 +63,7 @@ class AugmentedDataset():
 
         :param filter_fcn: funcion reference
         '''
-        self.dataset = self.dataset.filter(filter_fn)
+        self.dataset = self.dataset.filter(filter_fcn)
         return self
     def map(self,map_func,num_parallel_calls=None):
         '''Maps every sample in the dataset by a map function.
@@ -90,13 +90,16 @@ class AugmentedDataset():
         '''
         self.dataset = self.dataset.repeat(count=count)
         return self
+    def shuffle(self,buffer_size,seed=None,reshuffle_each_iteration=None):
+        self.dataset = self.dataset.shuffle(buffer_size,seed=seed,reshuffle_each_iteration=reshuffle_each_iteration)
+        return self
     def build(self):
         '''Creates an augmented dataset that contains the arguments to be used in the method :class:`tf.keras.model.fit()`
         '''
         self._build_argments_fit()
         return self.dataset
 
-class GeneratorBase(Generator):
+class GeneratorBase():
     """Wraps an object with a method getitem to make it an iterable class
 
     :param obj: Instance of object that access data
@@ -118,19 +121,21 @@ class GeneratorBase(Generator):
                 self.getitem = getattr(obj,getitem_fcn)
             else:
                 raise Exception('Obj {} has no attribute {}'.format(type(obj),getitem_fcn))
-
-
         if hasattr(obj,'__len__'):
             self.length = len(obj)
         elif length is not None:
             self.length = length
         else:
-            raise ValueException("length value is None, and object has not attribute to infer")
+            raise Exception("length value is None, and object has not attribute to infer")
         print('current length is: ', self.length)
         self.cnt = 0
     def __len__(self):
         return self.length
     def __call__(self):
+        self.cnt = 0
+        return self
+    def __iter__(self):
+        self.cnt = 0
         return self
     def __next__(self):
         if self.cnt>=self.length:
