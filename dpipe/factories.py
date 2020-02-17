@@ -7,7 +7,7 @@ except:
 import numpy as np
 
 
-class AugmentedDataset():
+class AugmentedDataset(object):
     """ Augments :class:`tf.data.Dataset` to handle custom configurations
 
     :param dataset: Instance of a :class:`tf.data.Dataset`
@@ -72,7 +72,7 @@ class AugmentedDataset():
         '''
         self.dataset = self.dataset.map(
                                     map_func,
-                                    num_parallel_calls=None)
+                                    num_parallel_calls=num_parallel_calls)
         return self
     def prefetch(self,buffer_size):
         '''Preloads samples on the tensor flow session i.e. memory to be processed.abs($0)
@@ -155,6 +155,19 @@ class GeneratorBase():
         """
         raise StopIteration
 
+class ReaderDummy():
+    def __init__(self, read_fcn, list):
+        self.length = len(list)
+        self.read_fcn = read_fcn
+        self.list = list
+    def __len__(self):
+        return self.length
+    def __getitem__(self, item):
+        return self.read_fcn(self.list[item])
+
+def from_function(read_fcn, list):
+    obj = ReaderDummy(read_fcn,list)
+    return from_object(obj)
 
 def from_object(obj,getitem_fcn=None,training=True):
     """ Creates a tf.data.Dataset object with configuration parameters for fitting
@@ -162,7 +175,7 @@ def from_object(obj,getitem_fcn=None,training=True):
     :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
     :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
     :param training: Specify training/validation flag
-    :type training: book, optional
+    :type training: bool, optional
     :return: An object :class:`tf.data.Dataset` from the obj dataset
     """
     gen = GeneratorBase(obj,getitem_fcn)
@@ -198,3 +211,4 @@ def from_object(obj,getitem_fcn=None,training=True):
     dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
     aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
     return aug_dataset
+
