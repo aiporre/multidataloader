@@ -165,11 +165,11 @@ class ReaderDummy():
     def __getitem__(self, item):
         return self.read_fcn(self.list[item])
 
-def from_function(read_fcn, list):
+def from_function(read_fcn, list,training=True,undetermined_shape=None):
     obj = ReaderDummy(read_fcn,list)
-    return from_object(obj)
+    return from_object(obj,training=training,undetermined_shape=undetermined_shape)
 
-def from_object(obj,getitem_fcn=None,training=True):
+def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
     """ Creates a tf.data.Dataset object with configuration parameters for fitting
 
     :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
@@ -198,6 +198,17 @@ def from_object(obj,getitem_fcn=None,training=True):
         # checks if single value
         output_types = (get_tf_dtype(value))
         output_shapes = (tf.TensorShape([]))
+    if undetermined_shape is not None:
+        def apply_undetermined(output_shape,targets):
+            print('output_shape,targets', output_shape,targets)
+            output_shape = list(output_shape)
+            for target in targets:
+                output_shape[target] = None
+            return tuple(output_shape)
+        if len(undetermined_shape)>0 and is_iterable(undetermined_shape[0]):
+            output_shapes = tuple(map(lambda x: apply_undetermined(*x),zip(output_shapes,undetermined_shape)))
+        else:
+            output_shapes = apply_undetermined(output_shapes, undetermined_shape)
 
     elif isinstance(value,dict):
         # checks if iterable and dictionary

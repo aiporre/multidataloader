@@ -5,8 +5,6 @@ from random import choice
 from string import ascii_letters, digits
 import tensorflow as tf
 
-from dpipe import from_object
-
 
 class Counter(object):
     """ Dummy counter class
