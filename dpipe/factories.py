@@ -155,7 +155,7 @@ class GeneratorBase():
         """
         raise StopIteration
 
-class ReaderDummy():
+class __Reader():
     def __init__(self, read_fcn, list):
         self.length = len(list)
         self.read_fcn = read_fcn
@@ -166,7 +166,7 @@ class ReaderDummy():
         return self.read_fcn(self.list[item])
 
 def from_function(read_fcn, list,training=True,undetermined_shape=None):
-    obj = ReaderDummy(read_fcn,list)
+    obj = __Reader(read_fcn, list)
     return from_object(obj,training=training,undetermined_shape=undetermined_shape)
 
 def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
@@ -198,6 +198,13 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         # checks if single value
         output_types = (get_tf_dtype(value))
         output_shapes = (tf.TensorShape([]))
+    elif isinstance(value,dict):
+        # checks if iterable and dictionary
+        raise NotImplemented
+        output_types = (tf.int32)
+        output_shapes = (tf.TensorShape([]))
+    else:
+        raise Exception(f'Output types and shapes couldn\'t be identified. The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
     if undetermined_shape is not None:
         def apply_undetermined(output_shape,targets):
             print('output_shape,targets', output_shape,targets)
@@ -209,15 +216,6 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
             output_shapes = tuple(map(lambda x: apply_undetermined(*x),zip(output_shapes,undetermined_shape)))
         else:
             output_shapes = apply_undetermined(output_shapes, undetermined_shape)
-
-    elif isinstance(value,dict):
-        # checks if iterable and dictionary
-        raise NotImplemented
-        output_types = (tf.int32)
-        output_shapes = (tf.TensorShape([]))
-    else:
-        raise Exception(f'The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
-
     # obtaining tf.keral.model.fit arguments
     dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
     aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
