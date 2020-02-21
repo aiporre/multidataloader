@@ -5,7 +5,7 @@ try:
 except:
     from .utils import get_tf_dtype, get_tf_shape, is_iterable
 import numpy as np
-
+import types
 
 class AugmentedDataset(object):
     """ Augments :class:`tf.data.Dataset` to handle custom configurations
@@ -181,6 +181,11 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
     gen = GeneratorBase(obj,getitem_fcn)
     # infer output types
     value = gen.getitem(0)
+    # extract value from generator
+    is_generator = False
+    if isinstance(value, types.GeneratorType):
+        is_generator = True
+        value = next(value)
     # Infers the data types and shapes:
     if isinstance(value,(tuple,list)):
         # checks if list or tuple object, multiple elements and not dictionary
@@ -216,8 +221,22 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
             output_shapes = tuple(map(lambda x: apply_undetermined(*x),zip(output_shapes,undetermined_shape)))
         else:
             output_shapes = apply_undetermined(output_shapes, undetermined_shape)
-    # obtaining tf.keral.model.fit arguments
-    dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
-    aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
+    if is_generator:
+        # create an inner dataset
+        # class __InnerDataset(tf.data.Dataset):
+        #     def __new__(cls, item_value):
+        #         print(item_value)
+        #         return tf.data.Dataset.from_generator(obj.read_fcn,
+        #                                               output_types=output_types,
+        #                                               output_shapes=output_shapes,
+        #                                               args=(item_value)
+        dataset = tf.data.Dataset.from_tensor_slices(obj.list)
+        dataset = dataset.interleave(
+            lambda x: tf.data.Dataset.from_generator(obj.read_fcn, output_types, output_shapes, args=(x,)),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        aug_dataset = AugmentedDataset(dataset, length=len(gen), training=training)
+    else:
+        dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
+        aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
     return aug_dataset
 

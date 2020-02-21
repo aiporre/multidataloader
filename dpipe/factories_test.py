@@ -4,7 +4,7 @@ import numpy as np
 from random import choice
 from string import ascii_letters, digits
 import tensorflow as tf
-
+import time
 from dpipe.factories import from_function
 
 
@@ -261,7 +261,7 @@ class TestFactoryFunctionList(unittest.TestCase):
                          'name=None))')
     def test_read_text_file(self):
         def read_fcn(filename):
-            messages, emotions = csv_to_lists(TEXT_FILE)
+            messages, emotions = csv_to_lists(filename)
             # find message unique dictionary encoding
             message_dict = compute_dictionary(' '.join(messages).split(' '))
             emotions_dict = compute_dictionary(' '.join(emotions).split(' '))
@@ -271,11 +271,18 @@ class TestFactoryFunctionList(unittest.TestCase):
             emotions = list(map(encoding_y_fnc, emotions))
             for m,e in zip(messages, emotions):
                 yield m,e
-
-        dataset_builder = from_function(read_fcn, [TEXT_FILE])
+        N = 2
+        filenames = N*[TEXT_FILE]
+        # comparing the tf normal  and the implementation of file concurrent reading with dpipe function way
+        dataset_builder = from_function(read_fcn, filenames,
+                                        undetermined_shape=([0], []) # messages are shape [1] with undetermined shape at the dim 0
+                                                                     # the second correspond to the emotions
+                                        )
+        t0 = time.time()
         dataset = dataset_builder.build()
-        print('>>>>>', list(dataset.as_numpy_iterator()))
-
+        self.assertEqual(len(list(dataset.as_numpy_iterator())), N*40000)
+        t1 = time.time()-t0
+        print('dadspipe implementation took: ', t1, 'seconds')
 
     def test_training(self):
         EPOCHS = 10
