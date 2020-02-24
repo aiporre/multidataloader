@@ -1,6 +1,9 @@
 import os, sys
 import numpy as np
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except Exception as e:
+    print('tensorflow import failed', e)
 from PIL import Image
 import numpy
 from skvideo.io import vread
