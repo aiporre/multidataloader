@@ -1,10 +1,4 @@
-dpipe package
-=============
-
-Submodules
-----------
-
-dpipe.factories module
+dpipe.factories
 ----------------------
 
 .. automodule:: dpipe.factories
@@ -12,15 +6,15 @@ dpipe.factories module
    :undoc-members:
    :show-inheritance:
 
-.. dpipe.factories\_test module
-.. ----------------------------
+dpipe.datasets
+----------------------------
 ..
-.. .. automodule:: dpipe.factories_test
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+.. automodule:: dpipe.datasets
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-dpipe.utils module
+dpipe.utils
 ------------------
 
 .. automodule:: dpipe.utils
