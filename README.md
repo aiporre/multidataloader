@@ -78,7 +78,7 @@ model.fit(x=training_ds,validation_data=validation_ds, epochs=10,**training_ds.b
 ```
 # Installation
 ````shell script
-pip install datapipe
+pip install dapipe
 ````
 It requires to install FFMPEG ([here](https://www.ffmpeg.org)) to work with video formats.
 
