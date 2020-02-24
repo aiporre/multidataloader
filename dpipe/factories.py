@@ -65,7 +65,7 @@ class AugmentedDataset(object):
         '''
         self.dataset = self.dataset.filter(filter_fcn)
         return self
-    def map(self,map_func,num_parallel_calls=None):
+    def map(self,map_func,num_parallel_calls=tf.data.experimental.AUTOTUNE):
         '''Maps every sample in the dataset by a map function.
 
         :param map_func: function reference
