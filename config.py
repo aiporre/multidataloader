@@ -7,7 +7,8 @@ requirements = [
 setup(name='datapipe',
       version='0.1',
       description='Creates dataset builder objects',
-      url='https://github.com/aiporre/video_tools.git',
+      url='https://github.com/aiporre/multidataloader.git',
+      download_url='https://github.com/aiporre/multidataloader/archive/v0.1.tar.gz',
       author='Ariel Iporre',
       author_email='ariel.iporre.rivas@gmail.com',
       long_description=open('README.md').read(),
@@ -17,8 +18,7 @@ setup(name='datapipe',
       zip_safe=False,
       classifiers=[
           'Development Status :: 3 - Alpha',
-          # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
-          'Intended Audience :: Developers',  # Define that your audience are developers
+          'Intended Audience :: Developers',
           'Topic :: Software Development :: Build Tools',
           'License :: OSI Approved :: Apache License 2.0',
           'Programming Language :: Python :: 3.7',
