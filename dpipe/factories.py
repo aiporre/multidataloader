@@ -1,5 +1,7 @@
-from collections.abc import Generator
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except Exception as e:
+    print('tensorflow import failed', e)
 try:
     from utils import get_tf_dtype, get_tf_shape, is_iterable
 except:
@@ -65,11 +67,13 @@ class AugmentedDataset(object):
         '''
         self.dataset = self.dataset.filter(filter_fcn)
         return self
-    def map(self,map_func,num_parallel_calls=tf.data.experimental.AUTOTUNE):
+    def map(self,map_func,num_parallel_calls=None):
         '''Maps every sample in the dataset by a map function.
 
         :param map_func: function reference
         '''
+        if num_parallel_calls is None:
+            num_parallel_calls = tf.data.experimental.AUTOTUNE
         self.dataset = self.dataset.map(
                                     map_func,
                                     num_parallel_calls=num_parallel_calls)
