@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 requirements = [
                 'tensorflow==2.1.0',
-                'Pillow==2.2.1',
+                'Pillow==7.0.0',
                 'scikit-video==1.1.11'
                 ]
 setup(name='datapipe',
