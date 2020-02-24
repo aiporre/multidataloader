@@ -1,5 +1,7 @@
-from collections.abc import Generator
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except Exception as e:
+    print('tensorflow import failed', e)
 try:
     from utils import get_tf_dtype, get_tf_shape, is_iterable
 except:

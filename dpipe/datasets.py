@@ -1,4 +1,7 @@
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except Exception as e:
+    print('tensorflow import failed', e)
 from .factories import from_function
 from .utils import get_read_fcn, create_label_dict, is_supported_format
 from pathlib import Path
