@@ -1,0 +1,5 @@
+sphinx==2.4.1
+numpy==1.18.1
+pillow==7.0.0
+scikit-video==1.1.11
+sphinx-rtd-theme==0.4.3
