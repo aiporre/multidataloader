@@ -86,7 +86,7 @@ class AugmentedDataset(object):
             num_parallel_calls = tf.data.experimental.AUTOTUNE
         self.dataset = dataset.interleave(
             lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn, self.dataset.element_spec.dtype, self.dataset.element_spec.shape, args=(x,)),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+            num_parallel_calls=num_parallel_calls,
             cycle_length=cycle_length, block_length=block_length)
         return self
 
