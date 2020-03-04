@@ -287,7 +287,7 @@ class TestFactoryFunctionList(unittest.TestCase):
         # comparing the tf normal  and the implementation of file concurrent reading with dpipe function way
         dataset_builder = from_function(read_fcn, filenames,
                                         undetermined_shape=([0], []) # messages are shape [1] with undetermined shape at the dim 0
-                                                                     # the second correspond to the emotions
+                                                                     # the second correspond to the emotions which is an scalar text
                                         )
         t0 = time.time()
         dataset = dataset_builder.build()

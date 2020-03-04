@@ -26,12 +26,14 @@ class TestFromListFactory(unittest.TestCase):
         ## TEST multi
         # test external defined video frames
         dataset = make_dataset('video', 'label', x_path=DATAPATH_VIDEOS, x_size=(128, 128), video_frames=10,
-                               video_cropping='multi').build()
+                               video_cropping='multi').recompute_length().build()
         for m,n in dataset.as_numpy_iterator():
             self.assertEqual((10, 128, 128, 3), m.shape)
-            self.assertEqual(0, n)
+            self.assertEqual((), n.shape)
             break
         self.assertEqual(58, len(list(dataset.as_numpy_iterator())))
+        self.assertEqual(58, dataset.length)
+
         self.assertEqual([10,128,128,3],dataset.element_spec[0].shape.as_list())
         # test inferred out video frames
         dataset = make_dataset('video', 'label', x_path=DATAPATH_VIDEOS, x_size=(128, 128), video_cropping='multi').build()

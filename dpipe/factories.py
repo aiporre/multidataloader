@@ -1,3 +1,5 @@
+from warnings import warn
+
 try:
     import tensorflow as tf
 except Exception as e:
@@ -36,6 +38,18 @@ class AugmentedDataset(object):
             arguments = {'batch_size':None,
                     'validation_steps':self.length//self.batch_size}
         self.dataset.built_args = arguments
+        self.dataset.length = self.length
+
+    def recompute_length(self):
+        """
+        Recompute the length of the datatase.
+
+        This may take long since all the samples must be accessed.
+        """
+        warn('Recomputing the length may take a long time depending on the data access.')
+        self.length = len(list(self.dataset.as_numpy_iterator()))
+        return self
+
     def batch(self,batch_size):
         '''Make dataset batchs of specific batch size
 
