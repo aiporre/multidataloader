@@ -183,7 +183,6 @@ def make_model():
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     return model
 
-
 class TestFactoryDatasetBuilder(unittest.TestCase):
     def test_build(self):
         c = DoubleImage(length=100)
@@ -259,6 +258,18 @@ class TestFactoryFunctionList(unittest.TestCase):
         self.assertEqual(str(dataset.element_spec),
                          '(TensorSpec(shape=(), dtype=tf.string, name=None), TensorSpec(shape=(), dtype=tf.string, '
                          'name=None))')
+    def test_read_function_float_gen(self):
+        def counter_float(v):
+            return 1.0
+
+        def counter_float_ndarray(v):
+            return np.array(1.0)
+
+        dataset = from_function(counter_float, [1,2,3,4]).build()
+        print(list(dataset.as_numpy_iterator()))
+        dataset = from_function(counter_float_ndarray, [1, 2, 3, 4]).build()
+        print(list(dataset.as_numpy_iterator()))
+
     def test_read_text_file(self):
         def read_fcn(filename):
             messages, emotions = csv_to_lists(filename)
@@ -276,7 +287,7 @@ class TestFactoryFunctionList(unittest.TestCase):
         # comparing the tf normal  and the implementation of file concurrent reading with dpipe function way
         dataset_builder = from_function(read_fcn, filenames,
                                         undetermined_shape=([0], []) # messages are shape [1] with undetermined shape at the dim 0
-                                                                     # the second correspond to the emotions
+                                                                     # the second correspond to the emotions which is an scalar text
                                         )
         t0 = time.time()
         dataset = dataset_builder.build()
