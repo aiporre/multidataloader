@@ -16,7 +16,7 @@ class AugmentedDataset(object):
     :type dataset: :class:`tf.data.Dataset`
     :param length: length of the dataset, defaults to None
     :type length: int, optional
-    :param length: defines training/validation flag. If `True` then the augmented dataset handles training configurations, and if `False` the augmented dataset handles validation configurations, defaults to `True`
+    :param training: defines training/validation flag. If `True` then the augmented dataset handles training configurations, and if `False` the augmented dataset handles validation configurations, defaults to `True`
     :type training: bool, optional
     """
     def __init__(self,dataset, gen_object=None, length=None,training=True):
@@ -238,14 +238,6 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         else:
             output_shapes = apply_undetermined(output_shapes, undetermined_shape)
     if is_generator:
-        # create an inner dataset
-        # class __InnerDataset(tf.data.Dataset):
-        #     def __new__(cls, item_value):
-        #         print(item_value)
-        #         return tf.data.Dataset.from_generator(obj.read_fcn,
-        #                                               output_types=output_types,
-        #                                               output_shapes=output_shapes,
-        #                                               args=(item_value)
         dataset = tf.data.Dataset.from_tensor_slices(obj.list)
         dataset = dataset.interleave(
             lambda x: tf.data.Dataset.from_generator(obj.read_fcn, output_types, output_shapes, args=(x,)),

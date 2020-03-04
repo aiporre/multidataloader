@@ -6,7 +6,9 @@ except Exception as e:
     print('tensorflow import failed', e)
 from PIL import Image
 import numpy
-from skvideo.io import vread
+from skvideo.io import vread, ffprobe
+from warnings import warn
+
 
 
 def is_iterable(value):
@@ -27,7 +29,7 @@ def get_tf_shape(value):
     :param value: input value can be :class:`numpy.ndarray`, numeric or string class. It supports list of numerics or string but not nested lists.
     """
     if isinstance(value, (list, tuple)):  # to support list of list or list of tuples
-        return [len(list)]
+        return [len(value)]
     elif isinstance(value, np.ndarray):
         return list(value.shape)
     elif not is_iterable(value) or isinstance(value, str):  # input can be a list of values or strings
@@ -285,3 +287,22 @@ def is_supported_format(filename):
         '.xpm_pipe') or filename.endswith('.xvag') or filename.endswith('.xwd_pipe') or filename.endswith(
         '.xwma') or filename.endswith('.yop') or filename.endswith('.yuv4mpegpipe')
     return is_supported
+
+
+def get_video_length(path):
+    """
+    Reads the number of frames from the metadata of a video file
+
+    :param path: path to the video file .
+    :return: Number of frames extracted with ffprobe.
+    :rtype: float64
+    """
+    try:
+        metadata = ffprobe(path)
+        nb = 1.0 * int(metadata["video"]['@nb_frames'])
+        return nb
+    except Exception as e:
+        if metadata == {}:
+            warn('Error maybe come from parallelization. ffmpeg already includes multithreading. ffmpeg can be '
+                 'compiled also with graphics accelerators as GPU.')
+        raise e
