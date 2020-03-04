@@ -16,7 +16,7 @@ def __get_undetermined_dims(x_type):
     elif x_type == 'image':
         return [0,1]
 
-def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None, video_frames=None, video_cropping=None):
+def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None, training=True, video_frames=None, video_cropping=None):
     """ Create custom dataset from a path list
 
     :param x_type: Defines the type of the input data to the model. It can be: label, video or image. The proper reading is generated accordingly.
@@ -25,6 +25,8 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
     :param y_path: Path to the dataset of targets, idem as above.
     :param x_size: Size of the image or video for the input to the model
     :param y_size: Size of the image or video for the target to the model
+    :param training: Specify training/validation flag
+    :type training: bool, optional
     :param video_frames: number of frames of the output video if data type is video
     :param video_cropping: video cropping method creates a crop of the video with a length defined by video frames. Working modes are single and multi.  single where the video will be just from the first frame to the number of video_frames defined; or the multi where the video is cropped sequences of clips with the number of frames defined by video_frames.
     :return: Created dataset :class:`tf.data.Dataset` with the pairs input and target (x,y)
@@ -76,7 +78,7 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
         return x, y
     undetermined = (__get_undetermined_dims(x_type), __get_undetermined_dims(y_type))
     if video_cropping is None:
-        return from_function(read_fcn, paths, undetermined_shape=undetermined).map(resize_inputs)
+        return from_function(read_fcn, paths, undetermined_shape=undetermined, training=training).map(resize_inputs)
     elif video_cropping == 'single':
         # compute video length when not specified
         if video_frames is None:
@@ -87,7 +89,7 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
             x, y = read_fcn(xy_path)
             x = x[0:video_frames]
             return x, y
-        return from_function(read_fcn_crop, paths).map(resize_inputs)
+        return from_function(read_fcn_crop, paths, training=training).map(resize_inputs)
     elif video_cropping == 'multi':
         # compute video length when not specified
         lengths = list(from_function(get_video_length, [p[0] for p in paths]).build().as_numpy_iterator())
@@ -116,6 +118,6 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
                 yield Xi, yi
 
         composed_paths = ['-->'.join([p[0],p[1],l]) for p, l in zip(paths, lengths)]
-        return from_function(crop, composed_paths).map(resize_inputs)
+        return from_function(crop, composed_paths, training=training).map(resize_inputs)
 
 
