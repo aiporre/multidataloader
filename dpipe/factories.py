@@ -1,3 +1,5 @@
+from warnings import warn
+
 try:
     import tensorflow as tf
 except Exception as e:
@@ -16,14 +18,15 @@ class AugmentedDataset(object):
     :type dataset: :class:`tf.data.Dataset`
     :param length: length of the dataset, defaults to None
     :type length: int, optional
-    :param length: defines training/validation flag. If `True` then the augmented dataset handles training configurations, and if `False` the augmented dataset handles validation configurations, defaults to `True`
+    :param training: defines training/validation flag. If `True` then the augmented dataset handles training configurations, and if `False` the augmented dataset handles validation configurations, defaults to `True`
     :type training: bool, optional
     """
-    def __init__(self,dataset,length=None,training=True):
+    def __init__(self,dataset, gen_object=None, length=None,training=True):
         self.dataset = dataset
         self.batch_size = 1
         self.length = length
         self.training = training
+        self.gen_object = gen_object
 
     def _build_argments_fit(self):
         ''' Creates the arguments used in fit
@@ -35,6 +38,20 @@ class AugmentedDataset(object):
             arguments = {'batch_size':None,
                     'validation_steps':self.length//self.batch_size}
         self.dataset.built_args = arguments
+        self.dataset.length = self.length
+
+    def recompute_length(self):
+        """
+        Recompute the length of the datatase.
+
+        This may take long since all the samples must be accessed.
+        """
+        warn('Recomputing the length may take a long time depending on the data access.')
+        self.length = 0
+        for _ in self.dataset:
+            self.length += 1
+        return self
+
     def batch(self,batch_size):
         '''Make dataset batchs of specific batch size
 
@@ -78,6 +95,17 @@ class AugmentedDataset(object):
                                     map_func,
                                     num_parallel_calls=num_parallel_calls)
         return self
+    def parallelize_extraction(self,cycle_length=4, block_length=16, num_parallel_calls=-1):
+        assert self.gen_object is not None, 'Generator must be specified to parallelize extraction'
+        dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
+        if num_parallel_calls ==-1:
+            num_parallel_calls = tf.data.experimental.AUTOTUNE
+        self.dataset = dataset.interleave(
+            lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn, self.dataset.element_spec.dtype, self.dataset.element_spec.shape, args=(x,)),
+            num_parallel_calls=num_parallel_calls,
+            cycle_length=cycle_length, block_length=block_length)
+        return self
+
     def prefetch(self,buffer_size):
         '''Preloads samples on the tensor flow session i.e. memory to be processed.abs($0)
 
@@ -226,14 +254,6 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         else:
             output_shapes = apply_undetermined(output_shapes, undetermined_shape)
     if is_generator:
-        # create an inner dataset
-        # class __InnerDataset(tf.data.Dataset):
-        #     def __new__(cls, item_value):
-        #         print(item_value)
-        #         return tf.data.Dataset.from_generator(obj.read_fcn,
-        #                                               output_types=output_types,
-        #                                               output_shapes=output_shapes,
-        #                                               args=(item_value)
         dataset = tf.data.Dataset.from_tensor_slices(obj.list)
         dataset = dataset.interleave(
             lambda x: tf.data.Dataset.from_generator(obj.read_fcn, output_types, output_shapes, args=(x,)),
@@ -241,6 +261,6 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         aug_dataset = AugmentedDataset(dataset, length=len(gen), training=training)
     else:
         dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
-        aug_dataset = AugmentedDataset(dataset,length=len(gen), training=training)
+        aug_dataset = AugmentedDataset(dataset, gen_object= obj, length=len(gen), training=training)
     return aug_dataset
 
