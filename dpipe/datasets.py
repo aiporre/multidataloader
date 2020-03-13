@@ -12,7 +12,7 @@ def __get_undetermined_dims(x_type):
     if x_type == 'label':
         return []
     elif x_type == 'video':
-        return [1,2]
+        return [0,1,2]
     elif x_type == 'image':
         return [0,1]
 
@@ -89,7 +89,7 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
             x, y = read_fcn(xy_path)
             x = x[0:video_frames]
             return x, y
-        return from_function(read_fcn_crop, paths, undetermined_shape=undetermined, training=training).map(resize_inputs)
+        return from_function(read_fcn_crop, paths, undetermined_shape=([1,2],[]), training=training).map(resize_inputs)
     elif video_cropping == 'multi':
         # compute video length when not specified
         lengths = list(from_function(get_video_length, [p[0] for p in paths]).build().as_numpy_iterator())
@@ -118,6 +118,6 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
                 yield Xi, yi
 
         composed_paths = ['-->'.join([p[0],p[1],l]) for p, l in zip(paths, lengths)]
-        return from_function(crop, composed_paths, undetermined_shape=undetermined, training=training).map(resize_inputs)
+        return from_function(crop, composed_paths, undetermined_shape=([1,2],[]), training=training).map(resize_inputs)
 
 
