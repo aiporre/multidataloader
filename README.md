@@ -4,6 +4,8 @@
   <img src="images/pipeguy.png" data-canonical-src="https://gyazo.com/eb5c5741b6a9a16c692170a41a49c858.png" width="200" />
 </p>
 
+[![Documentation](http://inch-ci.org/github/dwyl/hapi-auth-jwt2.svg?branch=master)](https://multidataloader.readthedocs.io/en/latest/) 
+
 With dpipe you can create ready to use datasets from paths or list of files. You should 
 specify the type and the location of the input and target. The labels are assumed to be the name of the folder containing the file,
 if you need a dataset for classification. 
