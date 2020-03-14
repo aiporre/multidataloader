@@ -11,6 +11,24 @@ except:
 import numpy as np
 import types
 
+
+def _get_types_output(element_spec):
+    shapes = tuple(e.shape.as_list() for e in element_spec)
+    types = tuple(e.dtype for e in element_spec)
+    return types, shapes
+
+class _Reader(object):
+    def __init__(self, read_fcn, list):
+        self.length = len(list)
+        self.read_fcn = read_fcn
+        self.list = list
+    def __len__(self):
+        return self.length
+    def __getitem__(self, item):
+        return self.read_fcn(self.list[item])
+
+
+
 class AugmentedDataset(object):
     """ Augments :class:`tf.data.Dataset` to handle custom configurations
 
@@ -33,10 +51,9 @@ class AugmentedDataset(object):
         '''
         if self.training:
             arguments = {'batch_size':None,
-                    'steps_per_epoch':self.length//self.batch_size}
+                    'steps_per_epoch':self.length}
         else:
-            arguments = {'batch_size':None,
-                    'validation_steps':self.length//self.batch_size}
+            arguments = {'validation_steps':self.length}
         self.dataset.built_args = arguments
         self.dataset.length = self.length
 
@@ -60,6 +77,7 @@ class AugmentedDataset(object):
         '''
         self.batch_size = batch_size
         self.dataset = self.dataset.batch(batch_size)
+        self.length //= self.batch_size
         return self
     def cache(self,filename=''):
         '''Defines the cache file to store previously loaded samples
@@ -97,13 +115,23 @@ class AugmentedDataset(object):
         return self
     def parallelize_extraction(self,cycle_length=4, block_length=16, num_parallel_calls=-1):
         assert self.gen_object is not None, 'Generator must be specified to parallelize extraction'
-        dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
+        assert hasattr(self.gen_object, 'list'), f'Generation {type(self.gen_object)} has not attribute list'
+        try:
+            items_dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
+        except TypeError as e:
+            warn('Generate list maybe too complex to make parallelization')
+            items_dataset = from_object(_Reader(lambda x: tuple(x), self.gen_object.list), training=self.training).build()
+        types, shapes = _get_types_output(self.dataset.element_spec)
         if num_parallel_calls ==-1:
             num_parallel_calls = tf.data.experimental.AUTOTUNE
-        self.dataset = dataset.interleave(
-            lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn, self.dataset.element_spec.dtype, self.dataset.element_spec.shape, args=(x,)),
-            num_parallel_calls=num_parallel_calls,
-            cycle_length=cycle_length, block_length=block_length)
+        self.dataset = items_dataset.interleave(
+                lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn,
+                                                     types,
+                                                     shapes,
+                                                     args=(x,)),
+                num_parallel_calls=num_parallel_calls,
+                cycle_length=cycle_length,
+                block_length=block_length)
         return self
 
     def prefetch(self,buffer_size):
@@ -187,18 +215,10 @@ class GeneratorBase():
         """
         raise StopIteration
 
-class __Reader():
-    def __init__(self, read_fcn, list):
-        self.length = len(list)
-        self.read_fcn = read_fcn
-        self.list = list
-    def __len__(self):
-        return self.length
-    def __getitem__(self, item):
-        return self.read_fcn(self.list[item])
+
 
 def from_function(read_fcn, list,training=True,undetermined_shape=None):
-    obj = __Reader(read_fcn, list)
+    obj = _Reader(read_fcn, list)
     return from_object(obj,training=training,undetermined_shape=undetermined_shape)
 
 def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):

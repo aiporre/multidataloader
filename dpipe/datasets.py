@@ -16,7 +16,8 @@ def __get_undetermined_dims(x_type):
     elif x_type == 'image':
         return [0,1]
 
-def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None, training=True, video_frames=None, video_cropping=None):
+def make_dataset(x_type, y_type, x_path=None, y_path=None, x_size=None, y_size=None, training=True, video_frames=None,
+                 video_cropping=None, one_hot_encoding=False):
     """ Create custom dataset from a path list
 
     :param x_type: Defines the type of the input data to the model. It can be: label, video or image. The proper reading is generated accordingly.
@@ -29,6 +30,7 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
     :type training: bool, optional
     :param video_frames: number of frames of the output video if data type is video
     :param video_cropping: video cropping method creates a crop of the video with a length defined by video frames. Working modes are single and multi.  single where the video will be just from the first frame to the number of video_frames defined; or the multi where the video is cropped sequences of clips with the number of frames defined by video_frames.
+    :param one_hot_encoding: Activate one hot encoding for the label input
     :return: Created dataset :class:`tf.data.Dataset` with the pairs input and target (x,y)
     """
     assert x_path is not None or y_path is not None, 'Neither x_path nor y_path was defined'
@@ -61,8 +63,8 @@ def make_dataset(x_type, y_type,x_path=None, y_path=None,x_size=None,y_size=None
         if not x_path == y_path:
             warn('Input and Target path x_path and y_path, respectively, don not match exactly. Please consider align the data source paths.', RuntimeWarning)
 
-    x_read_fcn = get_read_fcn(x_type, create_label_dict(x_path)) if x_type == 'label' else get_read_fcn(x_type)
-    y_read_fcn = get_read_fcn(y_type, create_label_dict(y_path)) if y_type == 'label' else get_read_fcn(x_type)
+    x_read_fcn = get_read_fcn(x_type, create_label_dict(x_path, one_hot_encoding=one_hot_encoding)) if x_type == 'label' else get_read_fcn(x_type)
+    y_read_fcn = get_read_fcn(y_type, create_label_dict(y_path, one_hot_encoding=one_hot_encoding)) if y_type == 'label' else get_read_fcn(x_type)
     paths = list(zip(x_path,y_path))
 
     def read_fcn(xy_paths):
