@@ -114,13 +114,22 @@ def get_single_value(value, counter=0):
 
 def get_parent_path(path):
     try:
-        return os.path.abspath(path).split(os.sep)[-2]
+        path = os.path.abspath(str(path))
+        if path.find(os.sep)>-1:
+            return path.split(os.sep)[-2]
+        elif path.find('/') > -1:
+            return path.split('/')[-2]
+        elif path.find('\\') > -1:
+            return path.split('\\')[-2]
+        else:
+            return path
+
     except Exception:
         t, v, tb = sys.exc_info()
         raise ValueError(f'Failed to infer parent folder of path {path}').with_traceback(tb)
 
 
-def create_label_dict(paths):
+def create_label_dict(paths, one_hot_encoding=False):
     """Creates a label dictionaty from list of paths
 
     :param paths: Path from where the label dictionary is created. The parent folder is considered as label for the images.
@@ -129,7 +138,14 @@ def create_label_dict(paths):
     :rtype: dict
     """
     labels = set(sorted(map(get_parent_path, paths)))
-    return {label: i for i, label in enumerate(labels)}
+    if one_hot_encoding:
+        def encode(i):
+            u = np.zeros(len(labels))
+            u[i] = 1
+            return u
+        return {label: encode(i) for i, label in enumerate(labels)}
+    else:
+        return {label: i for i, label in enumerate(labels)}
 
 
 def get_read_fcn(data_type, label_dict=None):

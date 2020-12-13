@@ -35,7 +35,7 @@ The function `make_dataset` outputs a `dpipe.dataset_builder` object that has th
 The dataset can be specified as:
 ````python
 from dpipe import make_dataset
-dataset = make_dataset('image', 'label', x_path='./dataset', x_size=(128,128)).build()
+dataset = make_dataset('image','label',x_path='./dataset',x_size=(128,128)).build()
 ````
 ## Creating dataset (more options)
 Additionally, we defined the dataset from functions or objects. Two use cases are presented here. A dataset can be created from a function and a list of element to parse, for example a list of files and a reading function. 

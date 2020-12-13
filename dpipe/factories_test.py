@@ -166,13 +166,14 @@ class ImageFlatWithLabel(object):
     """
     def __init__(self,length=10):
         # image 10x10 and a label
-        self.values = length*[(np.random.rand(100),np.random.randint(9))]
+        self.list = length*[(np.random.rand(100),np.random.randint(9))]
         self.length = length
     def __len__(self):
         return self.length
     def read(self,index):
         print('index at counter', index)
-        return self.values[index]
+        return self.list[index]
+
 
 def make_model():
     inputs = tf.keras.Input(shape=(100,))
@@ -307,6 +308,17 @@ class TestFactoryFunctionList(unittest.TestCase):
         print("Build arguments: ", dataset.built_args)
         model.fit(x=dataset, epochs=EPOCHS,**dataset.built_args)
 
+    def test_parallel_training(self):
+        EPOCHS = 10
+        LENGTH = 50
+        c = ImageFlatWithLabel(length=LENGTH)
+        dataset_builder = from_object(c,'read')
+        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().parallelize_extraction(num_parallel_calls=2).build()
+        model = make_model()
+        model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              optimizer=tf.keras.optimizers.RMSprop())
+        print("Build arguments: ", dataset.built_args)
+        model.fit(x=dataset, epochs=EPOCHS,**dataset.built_args)
 
 if __name__ == '__main__':
     unittest.main()
