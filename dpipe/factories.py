@@ -114,6 +114,14 @@ class AugmentedDataset(object):
                                     num_parallel_calls=num_parallel_calls)
         return self
     def parallelize_extraction(self,cycle_length=4, block_length=16, num_parallel_calls=-1):
+        '''
+        Generates a parallel consuming of items in the list of the original object given the reading function. For example reading files, or images.
+
+        :param cycle_length: defaults to 4, read TF docs for more details.
+        :param block_length: defaults to 16, read TF docs for more details.
+        :param num_parallel_calls: defaults to Autotune, read TF docs for more details.
+        @return:
+        '''
         assert self.gen_object is not None, 'Generator must be specified to parallelize extraction'
         assert hasattr(self.gen_object, 'list'), f'Generation {type(self.gen_object)} has not attribute list'
         try:
@@ -169,11 +177,11 @@ class GeneratorBase():
     :param length: length of the dataset, if None then infers from len() function, defaults to None
     :type length: int
     """
-    def __init__(self,obj,getitem_fcn=None,length=None):
+    def __init__(self,obj,getitem_fcn=None,itemlist_name=None,length=None):
         self.obj = obj
         if getitem_fcn is None:
             if hasattr(obj,'__getitem__'):
-                self.getitem = getattr(obj,'__getitem__')
+                self.getitem = obj.__getitem__
             else:
                 raise Exception('Obj {} has no attribute {}'.format(type(obj),'__getitem__'))
         else:
@@ -181,6 +189,20 @@ class GeneratorBase():
                 self.getitem = getattr(obj,getitem_fcn)
             else:
                 raise Exception('Obj {} has no attribute {}'.format(type(obj),getitem_fcn))
+        # complete implementation of _Reader base class
+        self.read_fcn = self.getitem
+
+        if itemlist_name is None:
+            if hasattr(obj,'list'):
+                self.list = obj.list
+            else:
+                raise Exception('Obj {} has no attribute {}'.format(type(obj),'list'))
+        else:
+            if hasattr(obj,itemlist_name):
+                self.list = getattr(obj,itemlist_name)
+            else:
+                raise Exception('Obj {} has no attribute {}'.format(type(obj),itemlist_name))
+
         if hasattr(obj,'__len__'):
             self.length = len(obj)
         elif length is not None:
@@ -221,16 +243,22 @@ def from_function(read_fcn, list,training=True,undetermined_shape=None):
     obj = _Reader(read_fcn, list)
     return from_object(obj,training=training,undetermined_shape=undetermined_shape)
 
-def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
+def from_object(obj,getitem_fcn=None,itemlist_name=None,training=True,undetermined_shape=None):
     """ Creates a tf.data.Dataset object with configuration parameters for fitting
 
     :param obj:  Object instance of the data with 'getitem_fcn' function to access dataset
     :param getitem_fcn: getitem_fcn Name of the method to access data . getitem_fcn can have any name defined for the in the class 'obj'. If not specified infers '__getitem__' as name of the access function
+    :type getitem_fcn: str, optional
+    :param itemlist_name: name of the list containing samples on the object, if None name is "list"
+    :type itemlist_name: str, optional
+
     :param training: Specify training/validation flag
     :type training: bool, optional
+    :param undetermined_shape: defines positions in the shape vector where dimensions are undetermided
+    :type undetermined_shape: iterable, optional
     :return: An object :class:`tf.data.Dataset` from the obj dataset
     """
-    gen = GeneratorBase(obj,getitem_fcn)
+    gen = GeneratorBase(obj,getitem_fcn,itemlist_name)
     # infer output types
     value = gen.getitem(0)
     # extract value from generator
@@ -264,6 +292,7 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         raise Exception(f'Output types and shapes couldn\'t be identified. The input value {type(value)} has to be a single np.array or a list, tuple or dictionary of np.arrays')
     if undetermined_shape is not None:
         def apply_undetermined(output_shape,targets):
+            # replaces target positions with None to configure undetermined dimension
             print('output_shape,targets', output_shape,targets)
             output_shape = list(output_shape)
             for target in targets:
@@ -274,13 +303,31 @@ def from_object(obj,getitem_fcn=None,training=True,undetermined_shape=None):
         else:
             output_shapes = apply_undetermined(output_shapes, undetermined_shape)
     if is_generator:
-        dataset = tf.data.Dataset.from_tensor_slices(obj.list)
-        dataset = dataset.interleave(
-            lambda x: tf.data.Dataset.from_generator(obj.read_fcn, output_types, output_shapes, args=(x,)),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        aug_dataset = AugmentedDataset(dataset, length=len(gen), training=training)
+
+        if itemlist_name is not None:
+            dataset = tf.data.Dataset.from_tensor_slices(getattr(obj,itemlist_name))
+        else:
+            dataset = tf.data.Dataset.from_tensor_slices(obj.list)
+
+        if getitem_fcn is not None:
+            dataset = dataset.interleave(
+                lambda x: tf.data.Dataset.from_generator(getattr(obj,getitem_fcn), output_types, output_shapes,
+                                                         args=(x,)),num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            aug_dataset = AugmentedDataset(dataset, length=len(gen), training=training)
+        else:
+            read_fcn = obj.read_fcn if hasattr(obj, 'read_fcn') else obj.__getitem__
+            dataset = dataset.interleave(
+                lambda x: tf.data.Dataset.from_generator(read_fcn, output_types, output_shapes, args=(x,)),
+                num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            aug_dataset = AugmentedDataset(dataset, length=len(gen), training=training)
+
     else:
         dataset = tf.data.Dataset.from_generator(gen, output_types, output_shapes)
+        if not hasattr(obj, 'read_fcn'):
+            obj.read_fcn = obj.__getitem__ if getitem_fcn is None else getattr(obj, getitem_fcn)
+        if not hasattr(obj, 'list'):
+            assert itemlist_name is not None, 'itemlist_name has to be defined or set the list of values to self.list'
+            obj.list = getattr(obj, itemlist_name)
         aug_dataset = AugmentedDataset(dataset, gen_object= obj, length=len(gen), training=training)
     return aug_dataset
 
