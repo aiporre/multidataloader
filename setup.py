@@ -6,7 +6,7 @@ with open('requirements.txt') as fp:
     install_requires = fp.read()
 requirements = install_requires
 setup(name='dapipe',
-      version='0.1',
+      version='0.2',
       description='Creates dataset builder objects',
       url='https://github.com/aiporre/multidataloader.git',
       download_url='https://github.com/aiporre/multidataloader/archive/v0.1.tar.gz',
