@@ -25,9 +25,9 @@ class ListNumerics(object):
     def __init__(self):
         self.values = [[1,2,3,4],[5,6,7,8],[9,10,11,12]]
     def __len__(self):
-        return 3
+        return len(self.values)
     def read(self,index):
-        print('index at counter', index)
+        print('index at counter', index, 'type', type(index))
         return tuple(self.values[index])
 
 def make_random_string(lenght=None):
@@ -85,6 +85,25 @@ class DoubleImageList(object):
     def read(self,index):
         print('index at counter', index)
         return self.values[index]
+
+class GeneratorSingleListOfNumbers(object):
+    """
+    Dummy counter class with generator
+    """
+    def __init__(self):
+        self.values = list(range(10))
+    def __len__(self):
+        return 10
+    def read(self,index):
+        # returns a counter generator over the list from 0 to the given index.
+        i = 0
+        index = 9 if index>10 else index
+        while i <= index:
+            yield self.values[i]
+            i += 1
+
+
+
 def get_all_methods(object):
     return [method_name for method_name in dir(object) if callable(getattr(object, method_name))]
 
@@ -92,7 +111,7 @@ class TestFactoriesMethods(unittest.TestCase):
 
     def test_from_object_one_output(self):
         c = Counter()
-        dataset_builder = from_object(c,'read')
+        dataset_builder = from_object(c,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -103,7 +122,7 @@ class TestFactoriesMethods(unittest.TestCase):
 
     def test_from_object_two_outputs(self):
         imgs = ImageWithLabel()
-        dataset_builder = from_object(imgs,'read')
+        dataset_builder = from_object(imgs,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -111,7 +130,7 @@ class TestFactoriesMethods(unittest.TestCase):
             print('element of the dataset: ', element)
             # print('methods: ', get_all_methods(element))
         imgs = DoubleImage()
-        dataset_builder = from_object(imgs,'read')
+        dataset_builder = from_object(imgs,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -121,7 +140,7 @@ class TestFactoriesMethods(unittest.TestCase):
     def test_from_object_two_outputs_list(self):
 
         imgs = DoubleImageList()
-        dataset_builder = from_object(imgs,'read')
+        dataset_builder = from_object(imgs,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -131,7 +150,7 @@ class TestFactoriesMethods(unittest.TestCase):
         self.assertEqual(0, 0)
     def test_from_object_string_outputs(self):
         strs = Strings()
-        dataset_builder = from_object(strs,'read')
+        dataset_builder = from_object(strs,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -141,7 +160,7 @@ class TestFactoriesMethods(unittest.TestCase):
         self.assertEqual(0, 0)
     def test_from_object_list_string_outputs(self):
         strs = ListOfStrings()
-        dataset_builder = from_object(strs,'read')
+        dataset_builder = from_object(strs,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -151,7 +170,7 @@ class TestFactoriesMethods(unittest.TestCase):
         self.assertEqual(0, 0)
     def test_from_object_list_numerics_outputs(self):
         numerics = ListNumerics()
-        dataset_builder = from_object(numerics,'read')
+        dataset_builder = from_object(numerics,'read','values')
         dataset = dataset_builder.build()
         # print(list(dataset))
         print("element spec: ", dataset.element_spec )
@@ -159,7 +178,16 @@ class TestFactoriesMethods(unittest.TestCase):
             print('element of the dataset: ', element)
             # print('methods: ', get_all_methods(element))
         self.assertEqual(0, 0)
-
+    def test_from_object_with_generator(self):
+        genSingleList = GeneratorSingleListOfNumbers()
+        dataset_builder = from_object(genSingleList, getitem_fcn='read',itemlist_name='values')
+        dataset = dataset_builder.build()
+        # print(list(dataset))
+        print("element spec: ", dataset.element_spec)
+        for element in dataset:
+            print('element of the dataset: ', element)
+            # print('methods: ', get_all_methods(element))
+        self.assertEqual(0, 0)
 
 class ImageFlatWithLabel(object):
     """ Dummy counter class
@@ -210,7 +238,7 @@ class TestFactoryDatasetBuilder(unittest.TestCase):
         self.assertEqual(len(list(dataset.as_numpy_iterator())), LENGTH//BATCH)
     def test_shuffle(self):
         c = Counter()
-        dataset_builder = from_object(c,'read')
+        dataset_builder = from_object(c,'read','values')
         dataset = dataset_builder.shuffle(len(c), reshuffle_each_iteration=True).build()
         list1 = list(dataset.as_numpy_iterator())
         list2 = list(dataset.as_numpy_iterator())
@@ -313,7 +341,8 @@ class TestFactoryFunctionList(unittest.TestCase):
         LENGTH = 50
         c = ImageFlatWithLabel(length=LENGTH)
         dataset_builder = from_object(c,'read')
-        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().parallelize_extraction(num_parallel_calls=2).build()
+        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().\
+            parallelize_extraction(num_parallel_calls=2).build()
         model = make_model()
         model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               optimizer=tf.keras.optimizers.RMSprop())
