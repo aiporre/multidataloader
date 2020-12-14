@@ -70,7 +70,7 @@ class Reader():
         for v, t in zip(df.values, df.targets):
             yield v, t
 reader = Reader()
-dataset = from_object(reader, 'my_reading_function',).build()
+dataset = from_object(reader, 'my_reading_function','filelist').build()
 ```
 The `build()` function that creates a dataset with arguments ready to use with the `fit()` method of and `tf.model` object. This is used like this:
 ```python
