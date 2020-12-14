@@ -107,7 +107,7 @@ def get_single_value(value, counter=0):
         iterable = iter(value)
         return get_single_value(next(iterable), counter=counter + 1)
     elif isinstance(value, np.ndarray):
-        return np.asscalar(value)
+        return value.item()
     else:
         return value
 
