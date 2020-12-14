@@ -1,10 +1,7 @@
 from setuptools import setup, find_packages
 from pkg_resources import parse_requirements
-# parsed_requirements = parse_requirements('requirements.txt')
-# requirements = reqs = [str(r.req) for r in parsed_requirements]
-with open('requirements.txt') as fp:
-    install_requires = fp.read()
-requirements = install_requires
+parsed_requirements = parse_requirements('requirements.txt')
+requirements = [str(r) for r in parsed_requirements]
 setup(name='dapipe',
       version='0.2',
       description='Creates dataset builder objects',
