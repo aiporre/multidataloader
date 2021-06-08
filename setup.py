@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from pkg_resources import parse_requirements
 requirements = [
     "tensorflow==2.3.1",
-    "Pillow==8.0.1",
+    "Pillow==8.2.0",
     "scikit-video==1.1.11"
 ]
 setup(name='dapipe',
