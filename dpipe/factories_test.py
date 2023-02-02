@@ -192,9 +192,16 @@ class TestFactoriesMethods(unittest.TestCase):
 class ImageFlatWithLabel(object):
     """ Dummy counter class
     """
-    def __init__(self,length=10):
+    def __init__(self,length=10, batched_x=True, batched_y=False):
         # image 10x10 and a label
-        self.list = length*[(np.random.rand(100),np.random.randint(9))]
+        if batched_y and batched_x:
+            self.list = [(np.random.rand(1,100),[np.random.randint(9)]) for _ in range(length)]
+        elif batched_y and not batched_x:
+            self.list = [(np.random.rand(100),[np.random.randint(9)]) for _ in range(length)]
+        elif not batched_y and batched_x:
+            self.list = [(np.random.rand(1,100),np.random.randint(9)) for _ in range(length)]
+        else:
+            self.list = [(np.random.rand(100),np.random.randint(9)) for _ in range(length)]
         self.length = length
     def __len__(self):
         return self.length
@@ -203,8 +210,8 @@ class ImageFlatWithLabel(object):
         return self.list[index]
 
 
-def make_model():
-    inputs = tf.keras.Input(shape=(100,))
+def make_model(inputs_size=100):
+    inputs = tf.keras.Input(shape=(inputs_size,))
     dense = tf.keras.layers.Dense(64, activation='relu')
     x = dense(inputs)
     x = tf.keras.layers.Dense(64, activation='relu')(x)
@@ -339,15 +346,51 @@ class TestFactoryFunctionList(unittest.TestCase):
     def test_parallel_training(self):
         EPOCHS = 10
         LENGTH = 50
-        c = ImageFlatWithLabel(length=LENGTH)
+        c = ImageFlatWithLabel(length=LENGTH, batched_x=True)
         dataset_builder = from_object(c,'read')
-        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().\
-            parallelize_extraction(num_parallel_calls=2).build()
-        model = make_model()
+        try:
+            dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat().\
+                parallelize_extraction(num_parallel_calls=2).build()
+        except Exception as e:
+            self.assertTrue(isinstance(e, TypeError) or isinstance(e, ValueError), " expected type exception 2 by 3 arguments")
+
+        dataset_builder = from_object(c,'read')
+        print(list(y for x,y in c.list))
+        @tf.function
+        def process(x,y):
+            # complicated stuff
+            print(y)
+            return x,y
+        dataset = dataset_builder.shuffle(LENGTH, reshuffle_each_iteration=True).batch(2).repeat(). \
+            parallelize_extraction(num_parallel_calls=2, read_fcn=process).build()
+        print(list(y for x,y in dataset.as_numpy_iterator()))
+        model = make_model(inputs_size=100)
         model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               optimizer=tf.keras.optimizers.RMSprop())
         print("Build arguments: ", dataset.built_args)
         model.fit(x=dataset, epochs=EPOCHS,**dataset.built_args)
 
+    def test_for_processing_files_in_parallel(self):
+        # TODO: complete test use case reading files in parallel
+        pass
+    def test_for_processing_pair_of_files_in_parallel(self):
+        # TODO: complete test use case reading files in parallel
+        pass
+
+    def test_for_processing_dict_of_files_in_parallel(self):
+        # TODO: complete test use case reading files in parallel
+        pass
+    def test_train_model(self):
+        EPOCHS = 10
+        LENGTH = 50
+        c = ImageFlatWithLabel(length=LENGTH, batched_x=True, batched_y=True)
+        dataset_builder = from_object(c,'read')
+        dataset = dataset_builder.build()
+        print(list(y for x, y in dataset.as_numpy_iterator()))
+        model = make_model(inputs_size=100)
+        model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      optimizer=tf.keras.optimizers.RMSprop())
+        print("Build arguments: ", dataset.built_args)
+        model.fit(x=dataset, epochs=EPOCHS, **dataset.built_args)
 if __name__ == '__main__':
     unittest.main()
