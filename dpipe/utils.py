@@ -1,5 +1,8 @@
 import os, sys
 import numpy as np
+
+from dpipe.video_reader import _cv2_vread
+
 try:
     import tensorflow as tf
 except Exception as e:
@@ -64,7 +67,7 @@ def get_tf_dtype(value):
         return tf.float16  # 16-bit half-precision floating-point.
     elif isinstance(value, np.float32):
         return tf.float32  # 32-bit single-precision floating-point.
-    elif isinstance(value, (np.float64, np.float)):
+    elif isinstance(value, np.float64):
         return tf.float64  # 64-bit double-precision floating-point.
     elif isinstance(value, np.complex64):
         return tf.complex64  # 64-bit single-precision complex.
@@ -86,7 +89,7 @@ def get_tf_dtype(value):
         return tf.int32  # 32-bit signed integer.
     elif isinstance(value, np.int64):
         return tf.int64  # 64-bit signed integer.
-    elif isinstance(value, np.bool):
+    elif isinstance(value, bool):
         return tf.bool  # Boolean.
     elif isinstance(value, str):
         return tf.string  # String.
@@ -159,7 +162,13 @@ def get_read_fcn(data_type, label_dict=None):
         return label_dict[label]
 
     def read_video(path):
-        return vread(path)
+        try:
+            return vread(path)
+        except AttributeError as ex:
+            if str(ex) == "module 'numpy' has no attribute 'float'":
+                return _cv2_vread(path)
+            else:
+                raise e
 
     if data_type == 'image':
         read_fcn = read_image

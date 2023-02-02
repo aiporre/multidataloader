@@ -118,33 +118,79 @@ class AugmentedDataset(object):
                                     map_func,
                                     num_parallel_calls=num_parallel_calls)
         return self
-    def parallelize_extraction(self,cycle_length=4, block_length=16, num_parallel_calls=-1):
+    def parallelize_extraction(self,cycle_length=4, block_length=16, num_parallel_calls=-1, read_fcn=None):
         '''
         Generates a parallel consuming of items in the list of the original object given the reading function. For example reading files, or images.
 
         :param cycle_length: defaults to 4, read TF docs for more details.
         :param block_length: defaults to 16, read TF docs for more details.
         :param num_parallel_calls: defaults to Autotune, read TF docs for more details.
+        :param read_fcn: defaults to None, function to process one item in the dataset f(x) or f(x,y) options.
         @return:
         '''
         assert self.gen_object is not None, 'Generator must be specified to parallelize extraction'
         assert hasattr(self.gen_object, 'list'), f'Generation {type(self.gen_object)} has not attribute list'
-        try:
+        if read_fcn is not None:
+            assert callable(read_fcn), "read_fcn must be callable."
+        if not isinstance(self.gen_object.list[0], (tuple, list)):
+            # checking if can take two arguments:
+            try:
+                self.gen_object.read_fcn(None)
+            except TypeError as error:
+                if "positional arguments" in str(error):
+                    raise TypeError(f'Generate list detected two than one arguments the function to process'
+                                    f' each element on obj.list must be able to process two elements. '
+                                    f'The function {error.args[0]}. Try with dictionaries.')
             items_dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
-        except TypeError as e:
-            warn('Generate list maybe too complex to make parallelization')
+        elif len(self.gen_object.list[0])==2:
+
+            # checking if can take two arguments:
+            try:
+                if read_fcn is None:
+                    raise ValueError('Value for read_fcn input must be specified when more thatn two arguments in.')
+                read_fcn(None, None)
+            except TypeError as error:
+                if "positional arguments" in str(error):
+                    raise TypeError(f'Generate list detected two than one arguments the function to process'
+                                    f' each element on obj.list must be able to process two elements. '
+                                    f'The function {error.args[0]}. Try with dictionaries.')
+            except Exception as ex:
+                if "None" not in str(ex):
+                    raise ex
+
+            list2 = (tf.constant(tuple((x[0]) for x in self.gen_object.list)),
+                     tf.constant(tuple([x[1]] for x in self.gen_object.list)))
+            items_dataset = tf.data.Dataset.from_tensor_slices(list2)
+        else:
+            warn('Generate list maybe too complex to make parallelization detected more than 2 elements. Trying anyway')
             items_dataset = from_object(_Reader(lambda x: tuple(x), self.gen_object.list), training=self.training).build()
         types, shapes = _get_types_output(self.dataset.element_spec)
         if num_parallel_calls ==-1:
             num_parallel_calls = tf.data.experimental.AUTOTUNE
-        self.dataset = items_dataset.interleave(
-                lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn,
-                                                     types,
-                                                     shapes,
-                                                     args=(x,)),
+        if not isinstance(self.gen_object.list[0], (tuple, list)):
+            self.dataset = items_dataset.interleave(
+                    lambda x: tf.data.Dataset.from_tensors(x).map(self.gen_object.read_fcn),
+                    num_parallel_calls=num_parallel_calls,
+                    cycle_length=cycle_length,
+                    block_length=block_length)
+        elif len(self.gen_object.list[0])==2:
+            self.dataset = items_dataset.interleave(
+                lambda x,y: tf.data.Dataset.from_tensors((x,y)).map(read_fcn),
                 num_parallel_calls=num_parallel_calls,
                 cycle_length=cycle_length,
                 block_length=block_length)
+        else:
+            try:
+                self.dataset = items_dataset.interleave(
+                    lambda x: tf.data.Dataset.from_generator(self.gen_object.read_fcn,
+                                                               types,
+                                                               shapes),
+                    num_parallel_calls=num_parallel_calls,
+                    cycle_length=cycle_length,
+                    block_length=block_length)
+            except Exception as error:
+                raise ValueError(f"List in gen_object has more too many elements {len(self.gen_object.list[0])}. hence"
+                                 f"they are too complex to infer. Error raised was: {error}")
         return self
 
     def prefetch(self,buffer_size):
@@ -232,7 +278,7 @@ class GeneratorBase():
     def send(self, ignored_arg):
         current_value = self.getitem(self.cnt)
         self.cnt +=1
-        # tf.data.Dataset fails to parse list, therefore the values is transformed into a tuple
+        # tf.data.Dataset fails to parse list, therefore the values are transformed into a tuple
         if isinstance(current_value,list):
             current_value = tuple(current_value)
         return current_value
