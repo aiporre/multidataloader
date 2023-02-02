@@ -64,7 +64,7 @@ def get_tf_dtype(value):
         return tf.float16  # 16-bit half-precision floating-point.
     elif isinstance(value, np.float32):
         return tf.float32  # 32-bit single-precision floating-point.
-    elif isinstance(value, (np.float64, np.float)):
+    elif isinstance(value, np.float64):
         return tf.float64  # 64-bit double-precision floating-point.
     elif isinstance(value, np.complex64):
         return tf.complex64  # 64-bit single-precision complex.
@@ -86,7 +86,7 @@ def get_tf_dtype(value):
         return tf.int32  # 32-bit signed integer.
     elif isinstance(value, np.int64):
         return tf.int64  # 64-bit signed integer.
-    elif isinstance(value, np.bool):
+    elif isinstance(value, bool):
         return tf.bool  # Boolean.
     elif isinstance(value, str):
         return tf.string  # String.
