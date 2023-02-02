@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from pkg_resources import parse_requirements
 requirements = [
     "tensorflow==2.11.0",
-    "Pillow==9.4.0",
+    "Pillow==9.3.0",
     "scikit-video==1.1.11",
     "numpy>=1.14.5"
 ]
