@@ -1,5 +1,8 @@
 import os, sys
 import numpy as np
+
+from dpipe.video_reader import _cv2_vread
+
 try:
     import tensorflow as tf
 except Exception as e:
@@ -159,7 +162,13 @@ def get_read_fcn(data_type, label_dict=None):
         return label_dict[label]
 
     def read_video(path):
-        return vread(path)
+        try:
+            return vread(path)
+        except AttributeError as ex:
+            if str(ex) == "module 'numpy' has no attribute 'float'":
+                return _cv2_vread(path)
+            else:
+                raise e
 
     if data_type == 'image':
         read_fcn = read_image
