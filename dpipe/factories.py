@@ -13,8 +13,13 @@ import types
 
 
 def _get_types_output(element_spec):
-    shapes = tuple(e.shape.as_list() for e in element_spec)
-    types = tuple(e.dtype for e in element_spec)
+    # shapes = tuple(e.shape.as_list() for e in element_spec)
+    # types = tuple(e.dtype for e in element_spec)
+    # see issue # [](https://github.com/aiporre/multidataloader/issues/7)
+    shapes = tuple(e.shape.as_list() for e in element_spec) if is_iterable(element_spec) \
+        else element_spec.shape.as_list()
+    types = tuple(e.dtype for e in element_spec) if is_iterable(element_spec) \
+        else element_spec.dtype
     return types, shapes
 
 class _Reader(object):
