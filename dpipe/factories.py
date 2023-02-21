@@ -1,5 +1,5 @@
 from warnings import warn
-
+from inspect import signature
 try:
     import tensorflow as tf
 except Exception as e:
@@ -134,29 +134,23 @@ class AugmentedDataset(object):
             assert callable(read_fcn), "read_fcn must be callable."
         if not isinstance(self.gen_object.list[0], (tuple, list)):
             # checking if can take two arguments:
-            try:
-                self.gen_object.read_fcn(None)
-            except TypeError as error:
-                if "positional arguments" in str(error):
-                    raise TypeError(f'Generate list detected two than one arguments the function to process'
-                                    f' each element on obj.list must be able to process two elements. '
-                                    f'The function {error.args[0]}. Try with dictionaries.')
+            sig = signature(self.gen_object.read_fcn)
+            if not len(sig.parameters) == 2:
+                raise TypeError(f'Generate list detected two than one arguments the function to process'
+                                f' each element on obj.list must be able to process two elements. '
+                                f'The function {str(sig)}. Try with dictionaries.')
             items_dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
         elif len(self.gen_object.list[0])==2:
 
             # checking if can take two arguments:
-            try:
-                if read_fcn is None:
-                    raise ValueError('Value for read_fcn input must be specified when more thatn two arguments in.')
-                read_fcn(None, None)
-            except TypeError as error:
-                if "positional arguments" in str(error):
-                    raise TypeError(f'Generate list detected two than one arguments the function to process'
-                                    f' each element on obj.list must be able to process two elements. '
-                                    f'The function {error.args[0]}. Try with dictionaries.')
-            except Exception as ex:
-                if "None" not in str(ex):
-                    raise ex
+            if read_fcn is None:
+                raise ValueError('Value for read_fcn input must be specified when more thatn two arguments in.')
+
+            sig = signature(self.gen_object.read_fcn)
+            if not len(sig.parameters) == 3:
+                raise TypeError(f'Generate list detected two than one arguments the function to process'
+                                f' each element on obj.list must be able to process two elements. '
+                                f'The function {str(sig)}. Try with dictionaries.')
 
             list2 = (tf.constant(tuple((x[0]) for x in self.gen_object.list)),
                      tf.constant(tuple([x[1]] for x in self.gen_object.list)))
