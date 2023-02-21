@@ -135,10 +135,11 @@ class AugmentedDataset(object):
         if not isinstance(self.gen_object.list[0], (tuple, list)):
             # checking if can take two arguments:
             sig = signature(self.gen_object.read_fcn)
-            if not len(sig.parameters) == 2:
+            if not len(sig.parameters) in [1, 2]:
                 raise TypeError(f'Generate list detected two than one arguments the function to process'
                                 f' each element on obj.list must be able to process two elements. '
-                                f'The function {str(sig)}. Try with dictionaries.')
+                                f'The function f{str(sig)} should take one f(x) or two args f(self, x). '
+                                f'Try with dictionaries instead of {type(self.gen_object.list[0])}.')
             items_dataset = tf.data.Dataset.from_tensor_slices(self.gen_object.list)
         elif len(self.gen_object.list[0])==2:
 
@@ -147,10 +148,11 @@ class AugmentedDataset(object):
                 raise ValueError('Value for read_fcn input must be specified when more thatn two arguments in.')
 
             sig = signature(self.gen_object.read_fcn)
-            if not len(sig.parameters) == 3:
+            if not len(sig.parameters) in [2,3]:
                 raise TypeError(f'Generate list detected two than one arguments the function to process'
                                 f' each element on obj.list must be able to process two elements. '
-                                f'The function {str(sig)}. Try with dictionaries.')
+                                f'The function f{str(sig)} should take two f(x,y) or two args f(self, x, y). '
+                                f'Try with dictionaries instead of {type(self.gen_object.list[0])}.')
 
             list2 = (tf.constant(tuple((x[0]) for x in self.gen_object.list)),
                      tf.constant(tuple([x[1]] for x in self.gen_object.list)))
